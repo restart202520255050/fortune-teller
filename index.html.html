@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>神社の運勢占い — 天宮 椿</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --washi:#fdf8f0;--washi2:#f5ede0;--washi3:#efe3d2;
+    --red:#c0392b;--red2:#9b2335;
+    --gold:#b8860b;--gold2:#d4a017;
+    --ink:#2c1810;--ink2:#5a3e2b;--ink3:#8b6e5a;--ink4:#b89d8a;
+    --border:rgba(184,134,11,0.2);--border2:rgba(184,134,11,0.4);
+    --shadow:rgba(44,24,16,0.12);
+  }
+  body{
+    font-family:'Hiragino Mincho ProN','Yu Mincho','YuMincho',Georgia,serif;
+    background:var(--washi);color:var(--ink);min-height:100vh;
+    position:relative;overflow-x:hidden;
+  }
+  body::before{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:
+      radial-gradient(ellipse at 20% 50%,rgba(192,57,43,0.04) 0%,transparent 60%),
+      radial-gradient(ellipse at 80% 20%,rgba(184,134,11,0.06) 0%,transparent 50%);
+  }
+  canvas#bg{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:0.35}
+  .page{position:relative;z-index:1;max-width:520px;margin:0 auto;padding:1.5rem 1rem 3rem}
+
+  .shrine-header{text-align:center;padding:1.25rem 0 0}
+  .torii-deco{display:flex;align-items:center;gap:12px;justify-content:center;margin-bottom:0.6rem}
+  .torii-line{flex:1;height:0.5px;background:var(--border2)}
+  .torii-mark{font-size:11px;letter-spacing:0.4em;color:var(--gold);white-space:nowrap}
+  .shrine-name{font-size:9px;letter-spacing:0.5em;color:var(--ink3);margin-bottom:4px}
+  .shrine-title{font-size:26px;font-weight:400;color:var(--ink);letter-spacing:0.08em;margin-bottom:2px}
+  .shrine-date{font-size:10px;letter-spacing:0.3em;color:var(--ink4)}
+
+  .char-area{display:flex;flex-direction:column;align-items:center;margin:1.25rem 0 0.5rem}
+
+  #priestessSvg{
+    width:200px;height:260px;
+    filter:drop-shadow(0 8px 24px rgba(44,24,16,0.15));
+  }
+  /* 表情トランジション：顔パーツをフェードで切り替え */
+  #priestessSvg .face-part{transition:opacity 0.6s ease}
+
+  #priestessSvg.bow{animation:bowAnim 1.2s ease-in-out}
+  @keyframes bowAnim{
+    0%,100%{transform:translateY(0) rotate(0deg)}
+    30%,70%{transform:translateY(4px) rotate(-3deg)}
+    50%{transform:translateY(6px) rotate(-5deg)}
+  }
+
+  /* ハッピー時：キラキラエフェクト */
+  .sparkle{
+    position:absolute;pointer-events:none;
+    animation:sparkleAnim 1.2s ease-out forwards;
+    font-size:18px;
+  }
+  @keyframes sparkleAnim{
+    0%{opacity:1;transform:translate(0,0) scale(0.5)}
+    100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(1.4)}
+  }
+
+  /* 心配時：汗マーク */
+  .sweat{
+    position:absolute;pointer-events:none;
+    animation:sweatAnim 1.5s ease-out forwards;
+    font-size:16px;
+  }
+  @keyframes sweatAnim{
+    0%{opacity:1;transform:translate(0,0)}
+    100%{opacity:0;transform:translate(var(--tx),var(--ty))}
+  }
+
+  .bubble-wrap{position:relative;width:100%;margin-top:0.5rem}
+  .bubble{
+    background:white;border:0.5px solid var(--border2);border-radius:16px;
+    padding:1rem 1.25rem;font-size:14px;line-height:1.9;color:var(--ink2);
+    min-height:64px;position:relative;box-shadow:0 2px 12px var(--shadow);
+  }
+  .bubble::before{content:'';position:absolute;top:-10px;left:50%;transform:translateX(-50%);border:5px solid transparent;border-bottom-color:var(--border2)}
+  .bubble::after{content:'';position:absolute;top:-8px;left:50%;transform:translateX(-50%);border:5px solid transparent;border-bottom-color:white}
+  .bubble-idle{color:var(--ink3);font-size:13px;text-align:center;letter-spacing:0.05em}
+
+  .cursor{display:inline-block;width:1px;height:1em;background:var(--ink2);vertical-align:text-bottom;animation:blink 0.9s step-end infinite;margin-left:1px}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+  .btn-row{margin:1.25rem 0 0.5rem;display:flex;gap:10px}
+  .btn-primary{
+    flex:1;padding:13px 0;background:var(--red);color:white;
+    border:none;border-radius:10px;font-family:inherit;font-size:15px;letter-spacing:0.25em;
+    cursor:pointer;transition:background 0.2s,transform 0.15s,box-shadow 0.2s;
+    box-shadow:0 3px 12px rgba(192,57,43,0.35);
+  }
+  .btn-primary:hover{background:var(--red2);box-shadow:0 5px 16px rgba(192,57,43,0.45)}
+  .btn-primary:active{transform:scale(0.97)}
+  .btn-primary:disabled{background:#c9b5aa;box-shadow:none;cursor:default;transform:none}
+
+  .fortune-card{
+    background:white;border:0.5px solid var(--border);border-radius:14px;
+    padding:1.25rem 1.5rem;margin-bottom:0.85rem;
+    opacity:0;transform:translateY(16px);
+    transition:opacity 0.5s ease,transform 0.5s ease;
+    box-shadow:0 2px 10px var(--shadow);
+  }
+  .fortune-card.visible{opacity:1;transform:translateY(0)}
+
+  .overall-block{text-align:center;padding:0.5rem 0 0.25rem}
+  .omikuji-band{display:inline-block;background:var(--red);color:white;font-size:11px;letter-spacing:0.4em;padding:4px 18px;border-radius:20px;margin-bottom:0.75rem}
+  .score-big{font-size:58px;font-weight:400;color:var(--ink);line-height:1;font-family:'Palatino Linotype',Palatino,Georgia,serif}
+  .verdict-text{font-size:15px;color:var(--ink2);margin-top:8px;letter-spacing:0.06em;font-weight:300}
+
+  .card-head{display:flex;align-items:center;gap:10px;margin-bottom:0.85rem;padding-bottom:0.75rem;border-bottom:0.5px solid var(--border)}
+  .cat-icon{width:30px;height:30px;border-radius:8px;background:var(--washi2);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+  .cat-label{font-size:10px;letter-spacing:0.3em;color:var(--ink4)}
+  .cat-stars{margin-left:auto;display:flex;gap:3px}
+  .sdot{width:7px;height:7px;border-radius:50%;background:var(--washi3);transition:background 0.3s}
+  .sdot.on{background:var(--red)}
+  .card-body{font-size:14px;line-height:2;color:var(--ink2);font-weight:300}
+
+  .lucky-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;background:var(--washi2);border-radius:10px;padding:1rem 1.25rem}
+  .lucky-item label{display:block;font-size:9px;letter-spacing:0.3em;color:var(--ink4);margin-bottom:5px}
+  .lucky-val{font-size:14px;color:var(--ink)}
+
+  .reset-area{text-align:center;margin-top:0.5rem;padding-bottom:0.5rem}
+  .reset-btn{background:transparent;border:0.5px solid var(--border2);color:var(--ink3);font-size:12px;letter-spacing:0.25em;cursor:pointer;font-family:inherit;padding:8px 20px;border-radius:20px;transition:color 0.2s,background 0.2s}
+  .reset-btn:hover{color:var(--ink2);background:var(--washi2)}
+
+  .dots{display:inline-flex;gap:5px;align-items:center}
+  .dot{width:5px;height:5px;border-radius:50%;background:white;animation:db 1.2s ease-in-out infinite}
+  .dot:nth-child(2){animation-delay:0.2s}.dot:nth-child(3){animation-delay:0.4s}
+  @keyframes db{0%,80%,100%{transform:translateY(0);opacity:0.4}40%{transform:translateY(-6px);opacity:1}}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="page">
+
+  <div class="shrine-header">
+    <div class="torii-deco">
+      <div class="torii-line"></div>
+      <div class="torii-mark">⛩ 天宮神社</div>
+      <div class="torii-line"></div>
+    </div>
+    <p class="shrine-name">AMAKURA JINJA — FORTUNE ORACLE</p>
+    <h1 class="shrine-title">今日の運勢</h1>
+    <p class="shrine-date" id="dateDisplay"></p>
+  </div>
+
+  <div class="char-area" style="position:relative">
+
+    <!-- ===== 神主SVGイラスト ===== -->
+    <svg id="priestessSvg" viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- 頬の赤み（通常） -->
+        <radialGradient id="cheekL" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#f4a0a0" stop-opacity="0.38"/><stop offset="100%" stop-color="#f4a0a0" stop-opacity="0"/></radialGradient>
+        <radialGradient id="cheekR" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#f4a0a0" stop-opacity="0.38"/><stop offset="100%" stop-color="#f4a0a0" stop-opacity="0"/></radialGradient>
+        <!-- 笑顔の頬（より赤く） -->
+        <radialGradient id="cheekLH" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#f07070" stop-opacity="0.55"/><stop offset="100%" stop-color="#f07070" stop-opacity="0"/></radialGradient>
+        <radialGradient id="cheekRH" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#f07070" stop-opacity="0.55"/><stop offset="100%" stop-color="#f07070" stop-opacity="0"/></radialGradient>
+      </defs>
+
+      <!-- 後光 -->
+      <ellipse cx="100" cy="58" rx="52" ry="52" fill="rgba(212,160,23,0.08)"/>
+      <ellipse cx="100" cy="58" rx="40" ry="40" fill="rgba(212,160,23,0.05)"/>
+
+      <!-- 後ろ髪 -->
+      <path d="M64 56 Q56 88 59 138 Q61 158 66 168 Q71 153 69 118 Q67 88 71 60 Z" fill="#18100a"/>
+      <path d="M136 56 Q144 88 141 138 Q139 158 134 168 Q129 153 131 118 Q133 88 129 60 Z" fill="#18100a"/>
+      <path d="M82 98 Q77 148 80 198 Q84 218 87 228 Q90 213 88 193 Q86 163 88 118 Z" fill="#231308" opacity="0.9"/>
+      <path d="M118 98 Q123 148 120 198 Q116 218 113 228 Q110 213 112 193 Q114 163 112 118 Z" fill="#231308" opacity="0.9"/>
+
+      <!-- 顔ベース -->
+      <ellipse cx="100" cy="60" rx="28" ry="31" fill="#fde8d8"/>
+
+      <!-- 頬（通常） -->
+      <g id="cheekNormal" class="face-part">
+        <ellipse cx="84" cy="67" rx="9" ry="5" fill="url(#cheekL)"/>
+        <ellipse cx="116" cy="67" rx="9" ry="5" fill="url(#cheekR)"/>
+      </g>
+      <!-- 頬（笑顔） -->
+      <g id="cheekHappy" class="face-part" opacity="0">
+        <ellipse cx="83" cy="70" rx="10" ry="6" fill="url(#cheekLH)"/>
+        <ellipse cx="117" cy="70" rx="10" ry="6" fill="url(#cheekRH)"/>
+      </g>
+      <!-- 頬（心配） -->
+      <g id="cheekWorry" class="face-part" opacity="0">
+        <ellipse cx="84" cy="66" rx="8" ry="4" fill="url(#cheekL)" opacity="0.5"/>
+        <ellipse cx="116" cy="66" rx="8" ry="4" fill="url(#cheekR)" opacity="0.5"/>
+      </g>
+
+      <!-- 前髪 -->
+      <path d="M72 40 Q76 28 100 26 Q124 28 128 40 Q120 34 100 33 Q80 34 72 40 Z" fill="#18100a"/>
+      <path d="M80 33 Q78 46 80 54 Q83 48 82 35 Z" fill="#231308"/>
+      <path d="M94 30 Q92 44 93 52 Q96 46 95 31 Z" fill="#231308"/>
+      <path d="M107 30 Q109 44 107 52 Q104 46 105 31 Z" fill="#231308"/>
+      <path d="M120 33 Q122 46 120 54 Q117 48 118 35 Z" fill="#231308"/>
+
+      <!-- 簪 -->
+      <line x1="120" y1="34" x2="138" y2="20" stroke="#d4a017" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="139" cy="19" r="4.5" fill="#d4a017"/>
+      <circle cx="136" cy="16" r="2.8" fill="#c0392b"/>
+      <circle cx="141" cy="16" r="2" fill="#e8b824"/>
+
+      <!-- ======= 目（通常：穏やかな表情） ======= -->
+      <g id="eyeNormal" class="face-part">
+        <!-- 左目 -->
+        <ellipse cx="87" cy="60" rx="5.5" ry="3.5" fill="white"/>
+        <ellipse cx="87" cy="61" rx="3.2" ry="3.2" fill="#3d1a08"/>
+        <ellipse cx="87" cy="60.5" rx="2" ry="2" fill="#18080a"/>
+        <circle cx="88.3" cy="59.5" r="0.9" fill="white"/>
+        <!-- 左まつ毛 -->
+        <path d="M82 57.5 Q84.5 55 87 57" fill="none" stroke="#18100a" stroke-width="1.2" stroke-linecap="round"/>
+        <line x1="82.5" y1="57" x2="81.5" y2="55" stroke="#18100a" stroke-width="0.8" stroke-linecap="round"/>
+        <!-- 右目 -->
+        <ellipse cx="113" cy="60" rx="5.5" ry="3.5" fill="white"/>
+        <ellipse cx="113" cy="61" rx="3.2" ry="3.2" fill="#3d1a08"/>
+        <ellipse cx="113" cy="60.5" rx="2" ry="2" fill="#18080a"/>
+        <circle cx="114.3" cy="59.5" r="0.9" fill="white"/>
+        <!-- 右まつ毛 -->
+        <path d="M118 57.5 Q115.5 55 113 57" fill="none" stroke="#18100a" stroke-width="1.2" stroke-linecap="round"/>
+        <line x1="117.5" y1="57" x2="118.5" y2="55" stroke="#18100a" stroke-width="0.8" stroke-linecap="round"/>
+      </g>
+
+      <!-- ======= 目（笑顔：細い弧） ======= -->
+      <g id="eyeHappy" class="face-part" opacity="0">
+        <!-- 笑い目：下が直線の細い弧 -->
+        <path d="M81.5 60 Q87 55.5 92.5 60" fill="none" stroke="#18100a" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M107.5 60 Q113 55.5 118.5 60" fill="none" stroke="#18100a" stroke-width="1.8" stroke-linecap="round"/>
+        <!-- まつ毛（笑顔） -->
+        <path d="M82 59 Q84.5 56 87 57.5" fill="none" stroke="#18100a" stroke-width="1.1" stroke-linecap="round"/>
+        <path d="M118 59 Q115.5 56 113 57.5" fill="none" stroke="#18100a" stroke-width="1.1" stroke-linecap="round"/>
+        <!-- 目の下の小さなしわ（笑い皺） -->
+        <path d="M83 62.5 Q87 64.5 91 62.5" fill="none" stroke="#e8a898" stroke-width="0.8" stroke-linecap="round" opacity="0.7"/>
+        <path d="M109 62.5 Q113 64.5 117 62.5" fill="none" stroke="#e8a898" stroke-width="0.8" stroke-linecap="round" opacity="0.7"/>
+      </g>
+
+      <!-- ======= 目（心配：八の字眉 + 少し開いた目） ======= -->
+      <g id="eyeWorry" class="face-part" opacity="0">
+        <!-- 左目（少し見開き） -->
+        <ellipse cx="87" cy="61" rx="5.8" ry="4" fill="white"/>
+        <ellipse cx="87" cy="62" rx="3.5" ry="3.5" fill="#3d1a08"/>
+        <ellipse cx="87" cy="61.5" rx="2.2" ry="2.2" fill="#18080a"/>
+        <circle cx="88.5" cy="60.5" r="1" fill="white"/>
+        <path d="M82 57.5 Q84.5 55 87 57" fill="none" stroke="#18100a" stroke-width="1.2" stroke-linecap="round"/>
+        <!-- 右目（少し見開き） -->
+        <ellipse cx="113" cy="61" rx="5.8" ry="4" fill="white"/>
+        <ellipse cx="113" cy="62" rx="3.5" ry="3.5" fill="#3d1a08"/>
+        <ellipse cx="113" cy="61.5" rx="2.2" ry="2.2" fill="#18080a"/>
+        <circle cx="114.5" cy="60.5" r="1" fill="white"/>
+        <path d="M118 57.5 Q115.5 55 113 57" fill="none" stroke="#18100a" stroke-width="1.2" stroke-linecap="round"/>
+      </g>
+
+      <!-- ======= 眉（通常） ======= -->
+      <g id="browNormal" class="face-part">
+        <path d="M81 53 Q87 50 92 52" fill="none" stroke="#3d1a08" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M108 52 Q113 50 119 53" fill="none" stroke="#3d1a08" stroke-width="1.6" stroke-linecap="round"/>
+      </g>
+
+      <!-- ======= 眉（笑顔：高めのアーチ） ======= -->
+      <g id="browHappy" class="face-part" opacity="0">
+        <path d="M81 51.5 Q87 48.5 92 51" fill="none" stroke="#3d1a08" stroke-width="1.6" stroke-linecap="round"/>
+        <path d="M108 51 Q113 48.5 119 51.5" fill="none" stroke="#3d1a08" stroke-width="1.6" stroke-linecap="round"/>
+      </g>
+
+      <!-- ======= 眉（心配：八の字） ======= -->
+      <g id="browWorry" class="face-part" opacity="0">
+        <!-- 左眉：内側が上がる（八の字） -->
+        <path d="M81 54 Q85 50 91 53.5" fill="none" stroke="#3d1a08" stroke-width="1.7" stroke-linecap="round"/>
+        <!-- 右眉：内側が上がる（八の字） -->
+        <path d="M109 53.5 Q115 50 119 54" fill="none" stroke="#3d1a08" stroke-width="1.7" stroke-linecap="round"/>
+        <!-- 眉間のシワ -->
+        <path d="M97 52 Q100 48.5 103 52" fill="none" stroke="#3d1a08" stroke-width="0.9" stroke-linecap="round" opacity="0.5"/>
+      </g>
+
+      <!-- ======= 口（通常：軽く結んだ口） ======= -->
+      <g id="mouthNormal" class="face-part">
+        <path d="M94 77 Q100 80 106 77" fill="none" stroke="#c06060" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M96 77.5 Q100 79.5 104 77.5" fill="#e88080" opacity="0.3"/>
+      </g>
+
+      <!-- ======= 口（笑顔：大きな弧＋歯） ======= -->
+      <g id="mouthHappy" class="face-part" opacity="0">
+        <!-- 笑いの弧 -->
+        <path d="M92 75.5 Q100 85 108 75.5" fill="none" stroke="#c06060" stroke-width="1.8" stroke-linecap="round"/>
+        <!-- 歯 -->
+        <path d="M93.5 76 Q100 84 106.5 76" fill="white" stroke="none"/>
+        <path d="M93.5 76 Q100 84 106.5 76 Q100 80 93.5 76 Z" fill="white" opacity="0.9"/>
+        <!-- 口の縁 -->
+        <path d="M92 75.5 Q100 85.5 108 75.5" fill="none" stroke="#c04848" stroke-width="1.6" stroke-linecap="round"/>
+        <!-- 口角 -->
+        <circle cx="92.2" cy="75.8" r="1.2" fill="#e07070"/>
+        <circle cx="107.8" cy="75.8" r="1.2" fill="#e07070"/>
+      </g>
+
+      <!-- ======= 口（心配：への字） ======= -->
+      <g id="mouthWorry" class="face-part" opacity="0">
+        <!-- への字口 -->
+        <path d="M93 80 Q100 75 107 80" fill="none" stroke="#c06060" stroke-width="1.6" stroke-linecap="round"/>
+        <!-- 口角の下がり -->
+        <circle cx="93.3" cy="79.8" r="1.1" fill="#d07070"/>
+        <circle cx="106.7" cy="79.8" r="1.1" fill="#d07070"/>
+      </g>
+
+      <!-- 鼻（共通） -->
+      <path d="M98 69 Q100 72 102 69" fill="none" stroke="#d4a090" stroke-width="0.9" stroke-linecap="round"/>
+
+      <!-- 首 -->
+      <rect x="92" y="89" width="16" height="20" rx="4" fill="#fde8d8"/>
+
+      <!-- 白衣 -->
+      <path d="M58 106 Q63 98 80 96 L100 94 L120 96 Q137 98 142 106 L150 168 Q130 173 100 174 Q70 173 50 168 Z" fill="white" stroke="#e0d0c0" stroke-width="0.5"/>
+      <!-- 衿 -->
+      <path d="M80 96 L100 94 L120 96 L112 118 L100 113 L88 118 Z" fill="white" stroke="#d0c0b0" stroke-width="0.5"/>
+      <!-- 左袖 -->
+      <path d="M58 106 Q38 113 30 128 Q26 143 33 156 Q43 163 56 156 Q62 146 60 133 Q60 118 63 106 Z" fill="white" stroke="#e0d0c0" stroke-width="0.5"/>
+      <path d="M30 128 Q22 140 28 152 Q33 160 38 156 Q32 148 34 136 Z" fill="white" stroke="#e0d0c0" stroke-width="0.5"/>
+      <!-- 右袖 -->
+      <path d="M142 106 Q162 113 170 128 Q174 143 167 156 Q157 163 144 156 Q138 146 140 133 Q140 118 137 106 Z" fill="white" stroke="#e0d0c0" stroke-width="0.5"/>
+      <path d="M170 128 Q178 140 172 152 Q167 160 162 156 Q168 148 166 136 Z" fill="white" stroke="#e0d0c0" stroke-width="0.5"/>
+
+      <!-- 緋袴 -->
+      <path d="M50 166 Q70 162 100 161 Q130 162 150 166 L154 228 Q130 234 100 235 Q70 234 46 228 Z" fill="#c0392b"/>
+      <line x1="63" y1="166" x2="60" y2="234" stroke="#9b2335" stroke-width="0.8" opacity="0.55"/>
+      <line x1="78" y1="163" x2="76" y2="234" stroke="#9b2335" stroke-width="0.8" opacity="0.55"/>
+      <line x1="100" y1="161" x2="100" y2="235" stroke="#9b2335" stroke-width="0.8" opacity="0.55"/>
+      <line x1="122" y1="163" x2="124" y2="234" stroke="#9b2335" stroke-width="0.8" opacity="0.55"/>
+      <line x1="137" y1="166" x2="140" y2="234" stroke="#9b2335" stroke-width="0.8" opacity="0.55"/>
+      <!-- 裾 -->
+      <path d="M46 228 Q70 236 100 237 Q130 236 154 228 L152 233 Q130 242 100 243 Q70 242 48 233 Z" fill="#9b2335"/>
+      <!-- 腰帯 -->
+      <path d="M53 161 Q100 165 147 161 L147 170 Q100 174 53 170 Z" fill="white" stroke="#d0c0b0" stroke-width="0.5"/>
+
+      <!-- 御幣 -->
+      <rect x="152" y="112" width="5" height="82" rx="2.5" fill="#c8920a"/>
+      <path d="M148 112 L158 112 L160 98 L156 103 L154 93 L152 103 L148 98 Z" fill="white" stroke="#d4a017" stroke-width="0.5"/>
+      <path d="M148 124 L158 124 L160 110 L156 115 L154 105 L152 115 L148 110 Z" fill="white" stroke="#d4a017" stroke-width="0.5"/>
+
+      <!-- 名前プレート -->
+      <rect x="10" y="220" width="68" height="22" rx="6" fill="rgba(255,255,255,0.88)" stroke="rgba(184,134,11,0.4)" stroke-width="0.5"/>
+      <text x="44" y="235" text-anchor="middle" font-size="10" fill="#5a3e2b"
+            font-family="'Hiragino Mincho ProN','Yu Mincho',Georgia,serif" letter-spacing="2">天宮 椿</text>
+    </svg>
+
+    <!-- エフェクト用コンテナ（キャラの周囲） -->
+    <div id="fxContainer" style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:200px;height:260px;pointer-events:none"></div>
+
+    <!-- 吹き出し -->
+    <div class="bubble-wrap">
+      <div class="bubble" id="bubble">
+        <p class="bubble-idle" id="bubbleText">
+          ようこそ、天宮神社へ。<br>今日もあなたの吉凶をお伝えいたします。<br>準備ができたら、ボタンを押してください。
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn-primary" id="mainBtn" onclick="startFortune()">✦ 今日の運勢を占う</button>
+  </div>
+
+  <div id="resultsArea" style="display:none">
+    <div class="fortune-card" id="cardOverall">
+      <div class="overall-block">
+        <div class="omikuji-band" id="omikujiBand">大吉</div>
+        <div class="score-big" id="scoreNum">—</div>
+        <div class="verdict-text" id="verdictText"></div>
+      </div>
+    </div>
+    <div class="fortune-card" id="cardLove">
+      <div class="card-head">
+        <div class="cat-icon">💕</div>
+        <span class="cat-label">縁結び・恋愛運</span>
+        <div class="cat-stars" id="starLove"></div>
+      </div>
+      <p class="card-body" id="textLove"></p>
+    </div>
+    <div class="fortune-card" id="cardWork">
+      <div class="card-head">
+        <div class="cat-icon">⚡</div>
+        <span class="cat-label">仕事・勝負運</span>
+        <div class="cat-stars" id="starWork"></div>
+      </div>
+      <p class="card-body" id="textWork"></p>
+    </div>
+    <div class="fortune-card" id="cardHealth">
+      <div class="card-head">
+        <div class="cat-icon">🌿</div>
+        <span class="cat-label">健康・体調運</span>
+        <div class="cat-stars" id="starHealth"></div>
+      </div>
+      <p class="card-body" id="textHealth"></p>
+    </div>
+    <div class="fortune-card" id="cardLucky">
+      <div class="card-head">
+        <div class="cat-icon">✨</div>
+        <span class="cat-label">今日のお守り</span>
+      </div>
+      <div class="lucky-grid">
+        <div class="lucky-item"><label>吉色</label><div class="lucky-val" id="luckyColor"></div></div>
+        <div class="lucky-item"><label>吉数</label><div class="lucky-val" id="luckyNumber"></div></div>
+        <div class="lucky-item"><label>吉言</label><div class="lucky-val" id="luckyWord"></div></div>
+      </div>
+    </div>
+    <div class="reset-area">
+      <button class="reset-btn" onclick="resetFortune()">またお越しください ↺</button>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+/* ── 金粒子背景 ── */
+(function(){
+  const c=document.getElementById('bg'),ctx=c.getContext('2d');
+  let p=[];
+  function resize(){
+    c.width=window.innerWidth;c.height=window.innerHeight;
+    p=Array.from({length:35},()=>({x:Math.random()*c.width,y:Math.random()*c.height,r:Math.random()*1.8+0.4,vx:(Math.random()-0.5)*0.2,vy:-0.1-Math.random()*0.15,speed:0.004+Math.random()*0.004,phase:Math.random()*Math.PI*2}));
+  }
+  function draw(t){
+    ctx.clearRect(0,0,c.width,c.height);
+    p.forEach(s=>{s.x+=s.vx;s.y+=s.vy;if(s.y<-5){s.y=c.height+5;s.x=Math.random()*c.width}const a=0.12+0.3*(0.5+0.5*Math.sin(t*s.speed+s.phase));ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fillStyle=`rgba(184,134,11,${a})`;ctx.fill();});
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize',resize);resize();requestAnimationFrame(draw);
+})();
+
+/* ── 日付 ── */
+document.getElementById('dateDisplay').textContent=
+  new Date().toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+
+/* ── 表情制御 ── */
+// 表情タイプ: 'normal' | 'happy' | 'worry'
+function setExpression(type){
+  const parts=['eye','brow','mouth','cheek'];
+  const map={eye:['Normal','Happy','Worry'],brow:['Normal','Happy','Worry'],mouth:['Normal','Happy','Worry'],cheek:['Normal','Happy','Worry']};
+  const target=type.charAt(0).toUpperCase()+type.slice(1);
+  parts.forEach(part=>{
+    map[part].forEach(variant=>{
+      const el=document.getElementById(part+variant);
+      if(!el)return;
+      el.style.transition='opacity 0.7s ease';
+      el.style.opacity=(variant===target)?'1':'0';
+    });
+  });
+}
+
+/* ── キラキラエフェクト（良い運勢） ── */
+function spawnSparkles(){
+  const fx=document.getElementById('fxContainer');
+  const sparks=['✦','★','✧','◆','☆'];
+  for(let i=0;i<8;i++){
+    setTimeout(()=>{
+      const el=document.createElement('div');
+      el.className='sparkle';
+      el.textContent=sparks[Math.floor(Math.random()*sparks.length)];
+      const sx=30+Math.random()*140;
+      const sy=20+Math.random()*160;
+      const tx=(Math.random()-0.5)*80+'px';
+      const ty=(-20-Math.random()*60)+'px';
+      el.style.cssText=`left:${sx}px;top:${sy}px;color:#d4a017;--tx:${tx};--ty:${ty};animation-delay:${i*0.12}s`;
+      fx.appendChild(el);
+      setTimeout(()=>el.remove(),1600);
+    },i*100);
+  }
+}
+
+/* ── 汗マークエフェクト（心配） ── */
+function spawnSweat(){
+  const fx=document.getElementById('fxContainer');
+  for(let i=0;i<3;i++){
+    setTimeout(()=>{
+      const el=document.createElement('div');
+      el.className='sweat';
+      el.textContent='💧';
+      const sx=100+30+Math.random()*20;
+      const sy=30+Math.random()*40;
+      const tx=(5+Math.random()*10)+'px';
+      const ty=(15+Math.random()*20)+'px';
+      el.style.cssText=`left:${sx}px;top:${sy}px;--tx:${tx};--ty:${ty};animation-delay:${i*0.3}s`;
+      fx.appendChild(el);
+      setTimeout(()=>el.remove(),2000);
+    },i*280);
+  }
+}
+
+/* ── データ ── */
+const data={
+  overall:[
+    {score:92,band:'大吉',mood:'happy',verdict:'今日は何事も順調に進む吉日でございます',
+     msg:'おめでとうございます！大吉でございます。今日は神々のご加護がひときわ強く感じられます。どうぞ思い切って行動なさってください。きっとよいことが舞い込んでまいります。'},
+    {score:78,band:'中吉',mood:'happy',verdict:'穏やかな運気。積極性が開運の鍵です',
+     msg:'中吉でございます。今日は落ち着いて行動すれば、物事がうまく運びましょう。人との縁を大切になさってください。'},
+    {score:65,band:'吉',mood:'happy',verdict:'午後から運気上昇。夕刻に好機あり',
+     msg:'吉でございます。今日は午後から運気が高まってまいります。夕暮れ時に思いがけない幸運が訪れるやもしれません。'},
+    {score:55,band:'小吉',mood:'normal',verdict:'焦らず着実に。積み重ねが実を結ぶ日',
+     msg:'小吉でございます。地道な努力が報われる兆しがございます。急がず、一歩一歩踏みしめてお進みください。'},
+    {score:38,band:'末吉',mood:'worry',verdict:'慎重に行動すれば、運が開けます',
+     msg:'末吉でございます……今日は慎重さが大切でございます。焦りは禁物。静かに、丁寧に過ごされることをお勧めいたします。どうかご無理をなさらないでくださいませ。'},
+    {score:22,band:'凶',mood:'worry',verdict:'今日は無理をせず、身を慎むが吉です',
+     msg:'凶でございます……申し訳ございません。今日は新たなことを始めるより、静かに過ごされることが賢明かと存じます。でも、明日はきっとよい日になります。'},
+  ],
+  love:[
+    'あなたの誠実なお心が相手の心を動かす日でございます。長年の思いをお伝えになるなら、今日が最良の機会かもしれません。',
+    '少しの行き違いが生じやすい気配がございます。言葉を丁寧にお選びになり、相手のお話にじっくり耳を傾けてみてください。',
+    '新たなご縁が結ばれる予感がいたします。普段と違う場所へ足をお運びになると、思いがけない出会いが待っているやもしれません。',
+    'お相手との絆が深まる兆しがございます。共に時を過ごすことで、より強い信頼関係が育まれるでしょう。',
+    'あなたのお人柄が輝いております。ありのままのご自身でいらっしゃることが、最大の魅力となります。',
+    '古いご縁が再び動き出す予感がございます。懐かしい方からのお便りに、素直なお気持ちでお答えになってみてください。',
+  ],
+  work:[
+    '創造力が高まる好機でございます。ご自身のお考えを積極的にお伝えになることで、高いご評価をお受けになれましょう。',
+    '皆さまとの協力が大切な局面でございます。周りへのお気配りと小さなご尽力が、大きな成果へとつながります。',
+    '集中力が高まる吉日でございます。長くお取り組みになっていた課題に、突破口が見えてくる予感がいたします。',
+    'お言葉のやり取りにご注意ください。丁寧なご連絡を心がけることで、思わぬ問題をお防ぎになれます。',
+    'リーダーシップをお発揮になるときでございます。あなたのご判断が周囲の方を導き、大きな動きが生まれましょう。',
+    '学びの吉日でございます。新しい知識やお力を身につけるのに最良のタイミング。書物との出会いがことに実りを結びます。',
+  ],
+  health:[
+    '気力・体力ともに充実した一日でございます。適度なお体の動かしが、心身のご調子を整えてくれましょう。',
+    'お疲れが溜まり気味の気配がございます。無理をなさらず、今日は早めにお休みをお取りになることをお勧めいたします。',
+    '胃腸の具合にお気をつけください。お食事はゆっくりとよくお噛みになり、暴飲暴食はお控えになってください。',
+    '心の安らぎを感じられる良い一日でございます。深呼吸やゆっくりとした散歩が、さらなる平穏をもたらします。',
+    '活力に満ちた吉日でございます。新しい運動や軽いお体のほぐしを始めるのに、ことに良い日取りでございます。',
+    'お水をこまめにお摂りになることが大切でございます。十分な水分補給が、お体の内側からご調子を整えます。',
+  ],
+  lucky:[
+    {color:'深海の碧',number:'7',word:'調和'},
+    {color:'桜色',number:'3',word:'縁'},
+    {color:'翡翠',number:'11',word:'成長'},
+    {color:'琥珀',number:'8',word:'豊穣'},
+    {color:'藤色',number:'5',word:'直感'},
+    {color:'珊瑚',number:'2',word:'絆'},
+    {color:'月白',number:'9',word:'清明'},
+    {color:'黄金',number:'1',word:'始まり'},
+  ]
+};
+
+function pick(a){return a[Math.floor(Math.random()*a.length)]}
+
+function makeStars(id,score){
+  const el=document.getElementById(id);
+  const n=Math.round(score/20);
+  el.innerHTML='';
+  for(let i=0;i<5;i++){const d=document.createElement('div');d.className='sdot'+(i<n?' on':'');el.appendChild(d);}
+}
+
+let typingTimer=null;
+function typeText(el,text,speed){
+  if(typingTimer)clearInterval(typingTimer);
+  el.innerHTML='';let i=0;
+  const cur=document.createElement('span');cur.className='cursor';el.appendChild(cur);
+  typingTimer=setInterval(()=>{
+    if(i<text.length){cur.insertAdjacentText('beforebegin',text[i]);i++;}
+    else{clearInterval(typingTimer);setTimeout(()=>cur.remove(),800);}
+  },speed||38);
+}
+
+function bowPriestess(){
+  const svg=document.getElementById('priestessSvg');
+  svg.classList.remove('bow');void svg.offsetWidth;svg.classList.add('bow');
+}
+
+function startFortune(){
+  const btn=document.getElementById('mainBtn');
+  btn.disabled=true;
+  btn.innerHTML='<span class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>';
+  bowPriestess();
+  const bub=document.getElementById('bubbleText');
+  bub.className='';
+  typeText(bub,'神意を読み解いております……少々お待ちくださいませ。',45);
+
+  setTimeout(()=>{
+    const ov=pick(data.overall);
+    const ls=30+Math.floor(Math.random()*65);
+    const ws=30+Math.floor(Math.random()*65);
+    const hs=30+Math.floor(Math.random()*65);
+    const lucky=pick(data.lucky);
+
+    // ── 表情変更 ──
+    setExpression(ov.mood);
+
+    // ── エフェクト ──
+    if(ov.mood==='happy') spawnSparkles();
+    else if(ov.mood==='worry') spawnSweat();
+
+    document.getElementById('omikujiBand').textContent=ov.band;
+    document.getElementById('scoreNum').textContent=ov.score;
+    document.getElementById('verdictText').textContent=ov.verdict;
+    document.getElementById('textLove').textContent=pick(data.love);
+    document.getElementById('textWork').textContent=pick(data.work);
+    document.getElementById('textHealth').textContent=pick(data.health);
+    document.getElementById('luckyColor').textContent=lucky.color;
+    document.getElementById('luckyNumber').textContent=lucky.number;
+    document.getElementById('luckyWord').textContent=lucky.word;
+    makeStars('starLove',ls);makeStars('starWork',ws);makeStars('starHealth',hs);
+
+    typeText(bub,ov.msg,38);
+    document.getElementById('resultsArea').style.display='block';
+    btn.style.display='none';
+    ['cardOverall','cardLove','cardWork','cardHealth','cardLucky'].forEach((id,i)=>{
+      setTimeout(()=>document.getElementById(id).classList.add('visible'),i*150+200);
+    });
+    bowPriestess();
+  },2200);
+}
+
+function resetFortune(){
+  document.getElementById('resultsArea').style.display='none';
+  ['cardOverall','cardLove','cardWork','cardHealth','cardLucky'].forEach(id=>
+    document.getElementById(id).classList.remove('visible'));
+  const btn=document.getElementById('mainBtn');
+  btn.style.display='block';btn.disabled=false;
+  btn.innerHTML='✦ 今日の運勢を占う';
+  // 表情を戻す
+  setExpression('normal');
+  const bub=document.getElementById('bubbleText');
+  bub.className='bubble-idle';
+  bub.innerHTML='またお越しくださいました。今日もご縁があることを、嬉しく存じます。';
+}
+</script>
+</body>
+</html>
